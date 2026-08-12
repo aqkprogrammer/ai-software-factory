@@ -1,0 +1,11 @@
+services:
+  agency:
+    build: .
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AGENT_MODEL=${AGENT_MODEL:-claude-sonnet-5}
+    volumes:
+      - ./workspace:/app/workspace
+    # no host network access to anything but the internet; no host FS beyond ./workspace
+    mem_limit: 2g
+    cpus: 2.0

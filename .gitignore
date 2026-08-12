@@ -1,0 +1,23 @@
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# local config
+.env
+.env.local
+
+# runtime artefacts — the event log and whatever the agents built
+*.db
+backend/workspace/
+
+# os
+.DS_Store

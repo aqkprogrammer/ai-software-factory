@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8"><title>AI Factory</title>
+<style>
+body{margin:0;background:#080D19;color:#E6ECF8;font:15px -apple-system,sans-serif;padding:30px}
+.w{max-width:800px;margin:0 auto}
+textarea{width:100%;height:100px;background:#0C1424;color:#E6ECF8;border:1px solid #22304F;border-radius:10px;padding:12px;font:inherit}
+button{font:inherit;padding:10px 16px;border-radius:9px;border:1px solid #22304F;background:#1B2540;color:#E6ECF8;cursor:pointer;margin-right:8px}
+#go{background:#6366F1;border-color:#6366F1}
+#mic.on{background:#EF4444;border-color:#EF4444}
+#feed{margin-top:22px;font:12.5px/1.7 Menlo,monospace;max-height:400px;overflow:auto}
+.e{padding:4px 0;border-bottom:1px solid #1A2440;color:#8C9CBF}
+.who{color:#6366F1;margin-right:8px}
+</style></head><body><div class="w">
+<h2>AI Software Factory</h2>
+<textarea id="p" placeholder="Build a FastAPI task API with JWT auth and pytest tests"></textarea>
+<div style="margin-top:10px">
+<button id="mic">Speak</button><button id="go">Start build</button>
+<span id="h" style="color:#5A6889;font-size:12px"></span></div>
+<div id="feed">Nothing running yet.</div>
+</div><script>
+var $=function(i){return document.getElementById(i)};
+var NAMES={cto:"Atlas",backend:"Forge",qa:"Sieve",reviewer:"Lens"};
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec,on=false,txt="";
+if(!SR){$("h").textContent="Voice needs Chrome";$("mic").disabled=true}else{
+rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang="en-IN";
+rec.onresult=function(e){var im="";for(var i=e.resultIndex;i<e.results.length;i++){
+var t=e.results[i][0].transcript;if(e.results[i].isFinal)txt+=t+" ";else im+=t}
+$("p").value=(txt+im).trim()};
+rec.onend=function(){if(on)rec.start()};
+rec.onerror=function(e){$("h").textContent="Mic: "+e.error;stop()};
+$("mic").onclick=function(){if(on)return stop();txt=$("p").value?$("p").value+" ":"";
+on=true;$("mic").className="on";$("h").textContent="Listening...";rec.start()}}
+function stop(){on=false;$("mic").className="";$("h").textContent="";try{rec.stop()}catch(e){}}
+$("go").onclick=function(){var r=$("p").value.trim();if(!r)return;stop();
+$("go").disabled=true;$("go").textContent="Running...";
+fetch("/runs",{method:"POST",headers:{"content-type":"application/json"},
+body:JSON.stringify({requirement:r,workspace:"./workspace/demo"})})
+.then(function(x){return x.json()}).then(function(j){if(j.error)$("h").textContent=j.error})
+.catch(function(){$("h").textContent="Server unreachable"})};
+function conn(){var ws=new WebSocket(location.origin.replace("http","ws")+"/stream");
+ws.onmessage=function(ev){var m=JSON.parse(ev.data);if(m.kind!=="activity")return;
+var f=$("feed");if(f.textContent==="Nothing running yet.")f.innerHTML="";
+var d=document.createElement("div");d.className="e";
+var s=document.createElement("span");s.className="who";
+s.textContent=NAMES[m.payload.agentId]||m.payload.agentId;
+var t=document.createElement("span");t.textContent=m.payload.message;
+if(m.payload.category==="error")t.style.color="#EF4444";
+if(m.payload.category==="test")t.style.color="#22C55E";
+d.appendChild(s);d.appendChild(t);f.insertBefore(d,f.firstChild)};
+ws.onclose=function(){$("go").disabled=false;$("go").textContent="Start build";setTimeout(conn,2000)}}
+conn();
+</script></body></html>
