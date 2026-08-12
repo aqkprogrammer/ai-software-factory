@@ -6,6 +6,7 @@ office can show both "who is typing" and "which stage are we in".
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 from . import agents
@@ -119,7 +120,7 @@ def build(requirement: str, workspace: str, max_fix_attempts: int = 2) -> Usage:
 
     # Anything that touches production stops here and waits for a person.
     bus.emit("approval_requested", {
-        "id": "ap-1", "type": "production_deployment",
+        "id": f"ap-{uuid.uuid4().hex[:8]}", "type": "production_deployment",
         "title": "Deploy to production", "requestedByAgentId": "reviewer",
         "status": "pending",
         "summary": {"filesChanged": 0, "testsPassed": 0, "testsTotal": 0,

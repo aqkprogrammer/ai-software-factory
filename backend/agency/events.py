@@ -48,9 +48,12 @@ class EventBus:
         self._lock = threading.Lock()
         self._subscribers: set[asyncio.Queue] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
-        # Last known state per agent, so a browser connecting mid-run sees a
-        # populated office instead of an empty one.
+        # Last known state per agent, task and approval, so a browser connecting
+        # mid-run sees a populated office instead of an empty one. Every screen
+        # in the UI is a projection of one of these three.
         self.snapshot: dict[str, dict] = {}
+        self.tasks: dict[str, dict] = {}
+        self.approvals: dict[str, dict] = {}
         self.run_id = "run-" + uuid.uuid4().hex[:8]
 
     # -- wiring ------------------------------------------------------------
@@ -72,10 +75,17 @@ class EventBus:
         """Called from any thread. Persists, updates snapshot, fans out."""
         msg = {"kind": kind, "payload": payload, "ts": _now(), "run_id": self.run_id}
 
-        if kind == "agent_update":
-            aid = payload.get("id")
-            if aid:
-                self.snapshot[aid] = {**self.snapshot.get(aid, {}), **payload}
+        # Fold the event into the running projection. Partial updates merge, so
+        # a task_update carrying only {id, status} keeps the title it was given
+        # when it was created.
+        pid = payload.get("id")
+        if pid:
+            if kind == "agent_update":
+                self.snapshot[pid] = {**self.snapshot.get(pid, {}), **payload}
+            elif kind == "task_update":
+                self.tasks[pid] = {**self.tasks.get(pid, {}), **payload}
+            elif kind in ("approval_requested", "approval_resolved"):
+                self.approvals[pid] = {**self.approvals.get(pid, {}), **payload}
 
         with self._lock:
             self._db.execute(

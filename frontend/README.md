@@ -19,10 +19,18 @@ cp .env.local.example .env.local   # then edit NEXT_PUBLIC_API_URL
 | Path | What it is |
 |---|---|
 | `app/page.jsx` | Route. Passes the API URL in. |
-| `components/OfficeClient.jsx` | Loads the office client-side only — it's a live view, there is nothing to server-render. |
-| `components/VirtualOffice.jsx` | The office: SVG floor plan, employee panel, activity feed, and the mock engine. |
-| `lib/useRealtime.js` | Snapshot from `/state`, then live over `/stream`, with reconnect. |
+| `components/OfficeClient.jsx` | Loads the app client-side only — it's a live view, there is nothing to server-render. |
+| `components/Shell.jsx` | Sidebar, top bar, run bar, routing, ⌘K. |
+| `components/office/Floor.jsx` | The isometric floor plan, including the camera. |
+| `components/screens/` | Command center, workflow graph, task board, activity log, approvals. |
+| `components/CommandPalette.jsx` | ⌘K. Commands are built from live state. |
+| `lib/useRealtime.js` | Snapshot from `/state`, then live over `/stream`, with reconnect and dedupe. |
+| `lib/mockEngine.js` | The simulation, for when the backend is down. |
+| `lib/roster.js` / `lib/theme.js` | The desks and the design tokens. |
 | `lib/types.ts` | The event and entity contract. Mirror it when you add a backend field. |
+
+The screen lives in the URL (`?screen=workflow`), so a refresh keeps you where
+you were and a link to a screen is one someone else can open.
 
 ## Two data sources
 
@@ -37,6 +45,5 @@ them.
 
 ## Not built yet
 
-Every sidebar item other than **Office** is a placeholder. The office and the
-event model came first because they set the contract the other screens read
-from.
+Projects, AI Employees, Code, Testing, Security, Deployments, Analytics, Costs
+and Settings are placeholders — they say so rather than showing fake data.

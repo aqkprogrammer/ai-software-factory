@@ -1,23 +1,17 @@
 /**
- * useRealtime — the drop-in replacement for useOfficeEngine().
+ * The client-side projection of the backend's event stream.
  *
- * In virtual-office.jsx, change one line:
+ *     GET  /state    snapshot, so first paint is never empty
+ *     WS   /stream   replay + live, with reconnect
  *
- *     const { agents, feed, running, setRunning } = useOfficeEngine();
- *     const { agents, feed, running, setRunning, connected, startRun } =
- *         useRealtime("http://localhost:8000");
- *
- * It returns the same shape the office already renders, so nothing else in
- * that file changes. Agents the backend never mentions stay `offline` — which
- * is honest: eight of the twelve desks are empty until you build those agents.
+ * Every screen in the app reads from what this returns. Nothing else in the UI
+ * talks to the network, which is why swapping in the mock engine works at all:
+ * it returns the same shape.
  */
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
-/** Must match the office roster ids in virtual-office.jsx. */
-const DESKS = [
-  "cto", "pm", "analyst", "architect", "backend", "database",
-  "frontend", "qa", "security", "reviewer", "devops", "sre",
-];
+import { DESKS } from "./roster";
+import { BUSY } from "./theme";
 
 const EMPTY_DESK = {
   status: "offline",
@@ -32,6 +26,7 @@ const EMPTY_DESK = {
   ping: 0,
   terminal: [],
   checklistIndex: 0,
+  currentTaskId: null,
 };
 
 const blankFleet = () => Object.fromEntries(DESKS.map((id) => [id, { ...EMPTY_DESK }]));
@@ -46,13 +41,14 @@ function applyAgentUpdate(prev, p) {
   if (p.toolCalls !== undefined) next.toolCalls = p.toolCalls;
   if (p.testsPassed !== undefined) next.testsPassed = p.testsPassed;
   if (p.testsTotal !== undefined) next.testsTotal = p.testsTotal;
+  if (p.currentTaskId !== undefined) next.currentTaskId = p.currentTaskId;
   if (p.inputTokens !== undefined || p.outputTokens !== undefined) {
     next.tokens = (p.inputTokens || 0) + (p.outputTokens || 0);
   }
   return next;
 }
 
-const clock = (iso) => {
+const clockOf = (iso) => {
   const d = iso ? new Date(iso) : new Date();
   return Number.isNaN(d.getTime())
     ? new Date().toLocaleTimeString("en-GB", { hour12: false })
@@ -62,10 +58,16 @@ const clock = (iso) => {
 export function useRealtime(apiUrl = "http://localhost:8000") {
   const [agents, setAgents] = useState(blankFleet);
   const [feed, setFeed] = useState([]);
+  const [tasks, setTasks] = useState({});
+  const [approvals, setApprovals] = useState({});
   const [connected, setConnected] = useState(false);
   const [running, setRunning] = useState(false);
   const wsRef = useRef(null);
   const retryRef = useRef(null);
+  // The socket replays recent history on every (re)connect, so the same event
+  // can arrive more than once. Without this, a reconnect duplicates the feed
+  // and React starts warning about repeated keys.
+  const seenRef = useRef(new Set());
 
   const handle = useCallback((msg) => {
     const { kind, payload, ts } = msg;
@@ -77,16 +79,37 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
       return;
     }
 
+    if (kind === "task_update") {
+      setTasks((prev) => ({ ...prev, [payload.id]: { ...prev[payload.id], ...payload } }));
+      return;
+    }
+
+    if (kind === "approval_requested" || kind === "approval_resolved") {
+      setApprovals((prev) => ({
+        ...prev,
+        [payload.id]: { ...prev[payload.id], ...payload, requestedAt: prev[payload.id]?.requestedAt ?? ts },
+      }));
+      return;
+    }
+
     if (kind === "activity") {
       const id = payload.agentId;
+      const eventId = payload.id || `${id}-${ts}-${payload.message}`;
+      if (seenRef.current.has(eventId)) return;   // replayed on reconnect
+      seenRef.current.add(eventId);
+      if (seenRef.current.size > 2000) {
+        seenRef.current = new Set([...seenRef.current].slice(-1000));
+      }
+
       setFeed((f) => [{
-        id: payload.id || `${id}-${Math.random()}`,
-        ts: clock(payload.timestamp || ts),
+        id: eventId,
+        ts: clockOf(payload.timestamp || ts),
+        iso: payload.timestamp || ts,
         agentId: id,
         type: payload.type,
         cat: payload.category,
         message: payload.message,
-      }, ...f].slice(0, 200));
+      }, ...f].slice(0, 400));
 
       // Command output is the one place we mirror raw text into the terminal.
       if (payload.metadata?.tool === "run_command" && DESKS.includes(id)) {
@@ -137,6 +160,8 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
       .then((r) => r.json())
       .then((s) => {
         setRunning(Boolean(s.running));
+        setTasks(s.tasks || {});
+        setApprovals(s.approvals || {});
         setAgents((prev) => {
           const next = { ...prev };
           Object.entries(s.agents || {}).forEach(([id, p]) => {
@@ -155,6 +180,19 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
     };
   }, [apiUrl, handle]);
 
+  /* -- polling the run flag. The socket carries events, not run state, and a
+        run that ends quietly would otherwise leave the bar spinning. ------ */
+  useEffect(() => {
+    if (!connected) return undefined;
+    const t = setInterval(() => {
+      fetch(`${apiUrl}/state`)
+        .then((r) => r.json())
+        .then((s) => setRunning(Boolean(s.running)))
+        .catch(() => {});
+    }, 4000);
+    return () => clearInterval(t);
+  }, [apiUrl, connected]);
+
   const startRun = useCallback(async (requirement, workspace = "./workspace/demo") => {
     setRunning(true);
     try {
@@ -170,5 +208,56 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
     }
   }, [apiUrl]);
 
-  return { agents, feed, connected, running, setRunning, startRun };
+  const startDemo = useCallback(async () => {
+    setRunning(true);
+    const r = await fetch(`${apiUrl}/runs/demo`, { method: "POST" });
+    return r.json();
+  }, [apiUrl]);
+
+  const resolveApproval = useCallback(async (id, decision) => {
+    const r = await fetch(`${apiUrl}/approvals/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    });
+    return r.json();
+  }, [apiUrl]);
+
+  const metrics = useDerivedMetrics(agents, feed, tasks, approvals);
+
+  return { agents, feed, tasks, approvals, metrics, connected, running,
+           setRunning, startRun, startDemo, resolveApproval, live: true };
+}
+
+/** Numbers every screen needs, derived once instead of per component. */
+export function useDerivedMetrics(agents, feed, tasks, approvals) {
+  return useMemo(() => {
+    const list = Object.values(agents);
+    const taskList = Object.values(tasks);
+    const tokens = list.reduce((n, a) => n + (a.tokens || 0), 0);
+    const tests = list.reduce(
+      (acc, a) => ({ passed: acc.passed + (a.testsPassed || 0), total: acc.total + (a.testsTotal || 0) }),
+      { passed: 0, total: 0 });
+
+    return {
+      busy: list.filter((a) => BUSY.includes(a.status)).length,
+      needsAttention: list.filter((a) => ["blocked", "error"].includes(a.status)).length,
+      offline: list.filter((a) => a.status === "offline").length,
+      filesChanged: list.reduce((n, a) => n + (a.filesChanged || 0), 0),
+      toolCalls: list.reduce((n, a) => n + (a.toolCalls || 0), 0),
+      tokens,
+      // Sonnet-class blended rate. Rough by design — the run log has the real number.
+      cost: (tokens / 1_000_000) * 9,
+      tests,
+      events: feed.length,
+      errors: feed.filter((e) => e.cat === "error").length,
+      tasksTotal: taskList.length,
+      tasksDone: taskList.filter((t) => t.status === "completed").length,
+      tasksRunning: taskList.filter((t) => t.status === "running").length,
+      progress: taskList.length
+        ? Math.round((taskList.filter((t) => t.status === "completed").length / taskList.length) * 100)
+        : 0,
+      pendingApprovals: Object.values(approvals).filter((a) => a.status === "pending").length,
+    };
+  }, [agents, feed, tasks, approvals]);
 }

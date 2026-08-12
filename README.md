@@ -53,6 +53,66 @@ the screen. You see what the agent *did*, never what it "thought".
 
 ---
 
+## Six screens, one event stream
+
+Every screen below is a projection of the same event log. Nothing has its own
+data source, so no two screens can disagree about what happened.
+
+### Command center — where the work stands
+
+![Command center](docs/media/command.png)
+
+Agents working, tasks in flight, tests passing, tokens burned, and what needs a
+human. The team list on the right is honest about scope: four desks are live,
+eight say `not provisioned`.
+
+### The pipeline, as a live graph
+
+<img src="docs/media/workflow.png" width="470" align="right" alt="Pipeline graph" />
+
+These are the stages `orchestrator.build()` actually executes, with state
+derived from the event stream — not a diagram someone drew once and let rot.
+Active edges animate; the fix loop is drawn going backwards because that is
+what it does.
+
+The test stage feeds failures back into the fix stage. That loop, capped at
+`max_fix_attempts`, is what turns a code generator into something that
+converges.
+
+<br clear="right" />
+
+### Task board
+
+![Task board](docs/media/tasks.png)
+
+The planner writes this board and the coder moves cards across it. Priority is
+the left edge, owner and progress at the bottom.
+
+### Activity, with replay
+
+![Activity log with replay scrubber](docs/media/activity.png)
+
+Every event, filterable by kind and by agent. The histogram buckets events over
+*time*, so bursts show up as spikes and model calls show up as gaps — and the
+scrubber rewinds through real history, because the events were persisted on the
+way through, not re-simulated.
+
+### The human gate
+
+![Approvals](docs/media/approvals.png)
+
+The agents plan, write, test and review on their own. They stop here.
+Approving posts back to the API, which emits the decision as an event — so your
+answer shows up in the log like everything else.
+
+### ⌘K
+
+Every screen, every agent, every pending approval, and the actions worth having
+on a keyboard. Arrow keys and Enter, bound at the window so a stray click can't
+kill them.
+
+---
+
 ## What's actually in here
 
 ### The floor plan
@@ -217,8 +277,11 @@ backend/
   agency/demo.py          scripted run, no key required
   server.py               FastAPI bridge
 frontend/
-  components/VirtualOffice.jsx   the office
-  lib/useRealtime.js             snapshot, then live, with reconnect
+  components/Shell.jsx           sidebar, top bar, routing, ⌘K
+  components/office/Floor.jsx    the isometric floor plan
+  components/screens/            command center, workflow, tasks, activity, approvals
+  lib/useRealtime.js             snapshot, then live, with reconnect and dedupe
+  lib/mockEngine.js              the simulation, for when the backend is down
   lib/types.ts                   the UI/backend contract
 ```
 
@@ -226,8 +289,9 @@ frontend/
 |---|---|
 | `POST /runs` | Start a build. Returns immediately; one at a time. |
 | `POST /runs/demo` | Scripted run. No key, no model calls, no files written. |
+| `POST /approvals/{id}` | Answer a gate: `{"decision": "approved"}`. |
 | `GET /health` | Provider, model, and whether the key is actually set. |
-| `GET /state` | Snapshot for first paint: agent states + recent events. |
+| `GET /state` | Snapshot for first paint: agents, tasks, approvals, events. |
 | `WS /stream` | Replays recent events, then streams live. |
 
 ---
@@ -248,8 +312,9 @@ Written down honestly, because a demo that hides its edges isn't worth showing.
 5. **Eight empty desks.** Frontend, database, security, and devops agents are
    roster entries, not implementations.
 
-Sidebar screens beyond **Office** are placeholders. The office and the event
-model came first because they set the contract every other screen reads from.
+Nine sidebar screens are still placeholders (Projects, Code, Testing,
+Security, Deployments, Analytics, Costs, Settings, AI Employees) — they say so
+rather than showing fake data.
 
 ---
 

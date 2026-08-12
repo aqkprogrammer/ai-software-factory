@@ -17,6 +17,7 @@ import contextlib
 import os
 import pathlib
 import threading
+import uuid
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -60,6 +61,11 @@ class RunRequest(BaseModel):
     fix_attempts: int = 2
 
 
+class Decision(BaseModel):
+    decision: str          # "approved" | "rejected"
+    note: str | None = None
+
+
 def _start(target, label: str):
     """Run `target` on a worker thread. One run at a time, failures surfaced."""
     global _running
@@ -97,6 +103,27 @@ def start_demo():
     return _start(demo.run, "Demo")
 
 
+@app.post("/approvals/{approval_id}")
+def resolve_approval(approval_id: str, body: Decision):
+    """Answer a gate. The pipeline stops at one of these on purpose."""
+    if body.decision not in ("approved", "rejected"):
+        return {"error": "decision must be 'approved' or 'rejected'"}
+    if approval_id not in bus.approvals:
+        return {"error": f"no approval {approval_id}"}
+
+    bus.emit("approval_resolved", {
+        "id": approval_id, "status": body.decision,
+        "note": body.note, "resolvedBy": "human",
+    })
+    bus.emit("activity", {
+        "id": uuid.uuid4().hex, "agentId": "cto",
+        "type": "approval_granted" if body.decision == "approved" else "approval_rejected",
+        "category": "deployment",
+        "message": f"Human {body.decision}: {bus.approvals[approval_id].get('title', approval_id)}",
+    })
+    return {"id": approval_id, "status": body.decision}
+
+
 @app.get("/health")
 def health():
     """Is the server up, and can it actually reach a model?"""
@@ -115,7 +142,8 @@ def health():
 def state():
     """Snapshot for first paint, so a page load doesn't start from an empty office."""
     return {"run_id": bus.run_id, "running": _running,
-            "agents": bus.snapshot, "events": bus.replay(120)}
+            "agents": bus.snapshot, "tasks": bus.tasks,
+            "approvals": bus.approvals, "events": bus.replay(200)}
 
 
 @app.websocket("/stream")

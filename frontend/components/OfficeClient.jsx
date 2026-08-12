@@ -2,12 +2,12 @@
 
 import dynamic from "next/dynamic";
 
-/*  The office is a live view of a running system: sockets, timers, clocks.
+/*  The app is a live view of a running system: sockets, timers, clocks.
     None of that has a meaningful server render, and pre-rendering it only
     creates hydration mismatches between the HTML built at request time and
     the first client paint. So it loads on the client, and the shell below is
     what you see for the few hundred ms before it does.                      */
-const VirtualOffice = dynamic(() => import("./VirtualOffice"), {
+const Shell = dynamic(() => import("./Shell"), {
   ssr: false,
   loading: () => (
     <div style={{
@@ -21,5 +21,5 @@ const VirtualOffice = dynamic(() => import("./VirtualOffice"), {
 });
 
 export default function OfficeClient({ apiUrl }) {
-  return <VirtualOffice apiUrl={apiUrl} />;
+  return <Shell apiUrl={apiUrl} />;
 }

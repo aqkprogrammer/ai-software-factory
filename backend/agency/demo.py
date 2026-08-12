@@ -9,6 +9,7 @@ It is labelled DEMO everywhere it surfaces. Do not mistake it for a build.
 from __future__ import annotations
 
 import time
+import uuid
 
 from .events import activity, agent_update, bus
 
@@ -34,10 +35,34 @@ SCRIPT = [
 
 DESKS = ("cto", "backend", "qa", "reviewer")
 
+# The plan a real run would produce, so the task board and the workflow graph
+# have something to show. Keyed by the SCRIPT index that moves them.
+TASKS = [
+    ("t1", "Project scaffold and dependencies", "backend"),
+    ("t2", "SQLAlchemy models and migrations", "database"),
+    ("t3", "JWT authentication endpoints", "backend"),
+    ("t4", "Test suite and CI", "qa"),
+]
+
+TASK_MOVES = {
+    2:  [("t1", "running")],
+    4:  [("t1", "review"), ("t2", "running")],
+    6:  [("t2", "review"), ("t3", "running")],
+    11: [("t1", "completed"), ("t2", "completed"), ("t3", "review")],
+    12: [("t4", "running")],
+    14: [("t3", "completed"), ("t4", "review")],
+    16: [("t4", "completed")],
+}
+
 
 def run() -> None:
     activity("cto", "task_started", "agent", "DEMO run started — no model calls, no files written")
     counters = {d: {"tools": 0, "files": 0} for d in DESKS}
+
+    for i, (tid, title, owner) in enumerate(TASKS):
+        bus.emit("task_update", {"id": tid, "title": title, "status": "ready",
+                                 "assignedAgentId": owner, "progress": 0,
+                                 "priority": "high" if i < 2 else "medium"})
 
     for i, (aid, status, doing, type_, category, message, pause) in enumerate(SCRIPT):
         c = counters[aid]
@@ -64,10 +89,17 @@ def run() -> None:
         )
         if type_ in ("test_passed", "test_failed"):
             agent_update(aid, testsPassed=meta["passed"], testsTotal=meta["total"])
+
+        for tid, status in TASK_MOVES.get(i, []):
+            bus.emit("task_update", {"id": tid, "status": status,
+                                     "progress": 100 if status == "completed" else
+                                     60 if status == "review" else 25})
         time.sleep(pause)
 
     bus.emit("approval_requested", {
-        "id": "ap-demo", "type": "production_deployment",
+        # Run-scoped: two runs must not collide on one id, or the second
+        # silently overwrites the first one's decision.
+        "id": f"ap-demo-{uuid.uuid4().hex[:8]}", "type": "production_deployment",
         "title": "Deploy to production (demo)", "requestedByAgentId": "reviewer",
         "status": "pending",
         "summary": {"filesChanged": 3, "testsPassed": 24, "testsTotal": 24,
