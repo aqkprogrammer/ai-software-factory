@@ -120,11 +120,13 @@ def run_agent(agent: Agent, task: str, ws: tools.Workspace,
         results = []
         for tu in tool_uses:
             tool_calls += 1
-            type_, category, status, message = describe_tool(tu.name, tu.input)
+            type_, category, status, message, target = describe_tool(tu.name, tu.input)
 
             # Emitted BEFORE execution, so the office shows work in flight
-            # rather than only completed work.
-            activity(agent.office_id, type_, category, message, task_id, tool=tu.name)
+            # rather than only completed work. `path` rides along so the code
+            # screen can group by file instead of parsing the message.
+            activity(agent.office_id, type_, category, message, task_id,
+                     tool=tu.name, path=target)
             agent_update(
                 agent.office_id, status=status, currentActivity=message,
                 progress=min(95, round(turn / agent.max_turns * 100)),

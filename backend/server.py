@@ -138,6 +138,33 @@ def health():
     }
 
 
+@app.get("/agents")
+def list_agents():
+    """Who exists, what model they run on, and exactly which tools they hold.
+
+    The tool list is the permission system, so this endpoint is the honest
+    answer to "what is this agent allowed to do" — it is read from the same
+    objects the runtime uses, not a description of them.
+    """
+    from agency import agents as roster
+    defined = [roster.PLANNER, roster.CODER, roster.TESTER, roster.REVIEWER]
+    return {"agents": [{
+        "name": a.name,
+        "deskId": a.office_id,
+        "model": a.model,
+        "maxTurns": a.max_turns,
+        "tools": a.tool_names,
+        "canWrite": any(t in a.tool_names for t in ("write_file", "edit_file")),
+        "canExecute": "run_command" in a.tool_names,
+    } for a in defined]}
+
+
+@app.get("/runs")
+def list_runs():
+    """Run history, straight out of the event log."""
+    return {"runs": bus.runs(50), "current": bus.run_id}
+
+
 @app.get("/state")
 def state():
     """Snapshot for first paint, so a page load doesn't start from an empty office."""

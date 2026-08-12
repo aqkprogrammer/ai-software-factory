@@ -62,6 +62,9 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
   const [approvals, setApprovals] = useState({});
   const [connected, setConnected] = useState(false);
   const [running, setRunning] = useState(false);
+  const [runs, setRuns] = useState([]);
+  const [roster, setRoster] = useState([]);
+  const [health, setHealth] = useState(null);
   const wsRef = useRef(null);
   const retryRef = useRef(null);
   // The socket replays recent history on every (re)connect, so the same event
@@ -101,6 +104,7 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
         seenRef.current = new Set([...seenRef.current].slice(-1000));
       }
 
+      const meta = payload.metadata || {};
       setFeed((f) => [{
         id: eventId,
         ts: clockOf(payload.timestamp || ts),
@@ -109,6 +113,12 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
         type: payload.type,
         cat: payload.category,
         message: payload.message,
+        // carried so the code/testing/analytics screens can group without
+        // parsing English back out of `message`
+        path: meta.path || undefined,
+        tool: meta.tool || undefined,
+        passed: meta.passed,
+        total: meta.total,
       }, ...f].slice(0, 400));
 
       // Command output is the one place we mirror raw text into the terminal.
@@ -181,15 +191,24 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
   }, [apiUrl, handle]);
 
   /* -- polling the run flag. The socket carries events, not run state, and a
-        run that ends quietly would otherwise leave the bar spinning. ------ */
+        run that ends quietly would otherwise leave the bar spinning. Run
+        history and config ride along on the same tick.                     */
   useEffect(() => {
     if (!connected) return undefined;
-    const t = setInterval(() => {
-      fetch(`${apiUrl}/state`)
-        .then((r) => r.json())
-        .then((s) => setRunning(Boolean(s.running)))
-        .catch(() => {});
-    }, 4000);
+    const poll = () => {
+      fetch(`${apiUrl}/state`).then((r) => r.json())
+        .then((s) => setRunning(Boolean(s.running))).catch(() => {});
+      fetch(`${apiUrl}/runs`).then((r) => r.json())
+        .then((d) => setRuns(d.runs || [])).catch(() => {});
+    };
+    poll();
+    // config is static for the life of the process — fetch it once
+    fetch(`${apiUrl}/agents`).then((r) => r.json())
+      .then((d) => setRoster(d.agents || [])).catch(() => {});
+    fetch(`${apiUrl}/health`).then((r) => r.json())
+      .then(setHealth).catch(() => {});
+
+    const t = setInterval(poll, 5000);
     return () => clearInterval(t);
   }, [apiUrl, connected]);
 
@@ -225,8 +244,9 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
 
   const metrics = useDerivedMetrics(agents, feed, tasks, approvals);
 
-  return { agents, feed, tasks, approvals, metrics, connected, running,
-           setRunning, startRun, startDemo, resolveApproval, live: true };
+  return { agents, feed, tasks, approvals, metrics, runs, roster, health,
+           connected, running, setRunning, startRun, startDemo, resolveApproval,
+           apiUrl, live: true };
 }
 
 /** Numbers every screen needs, derived once instead of per component. */

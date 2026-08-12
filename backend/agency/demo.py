@@ -73,8 +73,12 @@ def run() -> None:
         # Same metadata the real runtime attaches, so the terminal pane and the
         # test counters render here exactly as they do on a live run.
         meta = {"tool": "demo"}
+        if type_ in ("file_created", "file_modified", "tool_called"):
+            # "Creating app/main.py" -> "app/main.py"
+            tail = message.split(" ")[-1]
+            meta = {"tool": "write_file", "path": tail if "/" in tail or "." in tail else ""}
         if type_ == "test_started":
-            meta = {"tool": "run_command"}
+            meta = {"tool": "run_command", "path": message.replace("Running ", "")}
         elif type_ == "test_passed":
             total = 18 if aid == "backend" else 24
             meta = {"passed": total, "total": total}   # no tool key: results are not commands

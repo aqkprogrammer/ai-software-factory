@@ -50,6 +50,29 @@ const MOCK_APPROVALS = {
   },
 };
 
+/** Simulated run history. Marked as such wherever it surfaces. */
+const MOCK_RUNS = [
+  { runId: "run-simulated-1", startedAt: null, endedAt: null, events: 412, agents: 7,
+    testsPassed: 24, testsFailed: 3, fileWrites: 37, current: true, simulated: true },
+  { runId: "run-simulated-2", startedAt: null, endedAt: null, events: 388, agents: 6,
+    testsPassed: 18, testsFailed: 1, fileWrites: 22, current: false, simulated: true },
+  { runId: "run-simulated-3", startedAt: null, endedAt: null, events: 96, agents: 4,
+    testsPassed: 6, testsFailed: 4, fileWrites: 9, current: false, simulated: true },
+];
+
+/** Mirrors the shape of GET /agents. Real values come from the backend. */
+const MOCK_ROSTER = [
+  { name: "planner",  deskId: "cto",      model: "simulated", maxTurns: 50, tools: [], canWrite: false, canExecute: false },
+  { name: "coder",    deskId: "backend",  model: "simulated", maxTurns: 50,
+    tools: ["list_files", "read_file", "write_file", "edit_file", "search_code", "run_command"],
+    canWrite: true, canExecute: true },
+  { name: "tester",   deskId: "qa",       model: "simulated", maxTurns: 50,
+    tools: ["list_files", "read_file", "write_file", "edit_file", "search_code", "run_command"],
+    canWrite: true, canExecute: true },
+  { name: "reviewer", deskId: "reviewer", model: "simulated", maxTurns: 50,
+    tools: ["list_files", "read_file", "search_code", "run_command"], canWrite: false, canExecute: true },
+];
+
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 
@@ -88,9 +111,10 @@ export function useOfficeEngine() {
       return setTimeout(tick, 500 + i * 340);
     });
 
-    const emit = (agentId, type, cat, message) =>
+    const emit = (agentId, type, cat, message, extra = {}) =>
       setFeed((f) => [{ id: `${agentId}-${Date.now()}-${Math.random()}`, ts: now(),
-                        iso: new Date().toISOString(), agentId, type, cat, message },
+                        iso: new Date().toISOString(), agentId, type, cat, message,
+                        ...extra },
                       ...f].slice(0, 200));
 
     function step(person) {
@@ -100,7 +124,8 @@ export function useOfficeEngine() {
 
         if (a.status === "error") {                       // recover from failure
           next.status = "working"; next.activity = "Updating implementation";
-          emit(person.id, "file_modified", "code", "Updating implementation after test failure");
+          emit(person.id, "file_modified", "code", "Updating implementation after test failure",
+            { path: pick(FILES[person.id] || ["README.md"]), tool: "edit_file" });
           return { ...prev, [person.id]: next };
         }
         if (Math.random() < 0.07) {                        // genuinely blocked
@@ -117,7 +142,7 @@ export function useOfficeEngine() {
           next.status = "working";
           next.activity = `Running ${cmd}`;
           next.terminal = [...a.terminal, `$ ${cmd}`].slice(-30);
-          emit(person.id, "test_started", "test", `Started ${cmd}`);
+          emit(person.id, "test_started", "test", `Started ${cmd}`, { path: cmd, tool: "run_command" });
 
           setTimeout(() => setAgents((p2) => {
             const b = p2[person.id];
@@ -126,7 +151,8 @@ export function useOfficeEngine() {
                  `${passed} passed, ${total - passed} failed in ${(1 + Math.random() * 4).toFixed(2)}s`]
               : [`${total} passed in ${(1 + Math.random() * 4).toFixed(2)}s`];
             emit(person.id, failed ? "test_failed" : "test_passed", failed ? "error" : "test",
-              failed ? `${total - passed} of ${total} tests failed` : `${total} tests passed`);
+              failed ? `${total - passed} of ${total} tests failed` : `${total} tests passed`,
+              { passed, total });
             return { ...p2, [person.id]: { ...b,
               status: failed ? "error" : "working",
               activity: failed ? "Analysing test failure" : "Tests passed",
@@ -150,7 +176,8 @@ export function useOfficeEngine() {
         next.tokens = a.tokens + 900 + Math.floor(Math.random() * 4200);
         next.activeSeconds = a.activeSeconds + 20 + Math.floor(Math.random() * 60);
         if (act.type === "file_modified" || act.type === "file_created") next.filesChanged = a.filesChanged + 1;
-        emit(person.id, act.type, act.cat, `${act.verb} ${target}`);
+        emit(person.id, act.type, act.cat, `${act.verb} ${target}`,
+          act.type === "search_performed" ? {} : { path: target, tool: "write_file" });
         return { ...prev, [person.id]: next };
       });
 
@@ -178,6 +205,7 @@ export function useOfficeEngine() {
   const metrics = useDerivedMetrics(agents, feed, tasks, approvals);
 
   return { agents, feed, tasks, approvals, metrics, running, setRunning,
+           runs: MOCK_RUNS, roster: MOCK_ROSTER, health: null, apiUrl: null,
            connected: false, resolveApproval, live: false,
            startRun: async () => ({ error: "simulation — start the backend for a real run" }),
            startDemo: async () => ({ error: "simulation — start the backend for a real run" }) };

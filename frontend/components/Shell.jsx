@@ -29,6 +29,15 @@ import Workflow from "./screens/Workflow";
 import TaskBoard from "./screens/TaskBoard";
 import ActivityScreen from "./screens/ActivityScreen";
 import Approvals from "./screens/Approvals";
+import Projects from "./screens/Projects";
+import Employees from "./screens/Employees";
+import CodeScreen from "./screens/CodeScreen";
+import TestingScreen from "./screens/TestingScreen";
+import SecurityScreen from "./screens/SecurityScreen";
+import DeploymentsScreen from "./screens/DeploymentsScreen";
+import AnalyticsScreen from "./screens/AnalyticsScreen";
+import CostsScreen from "./screens/CostsScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 
 const NAV = [
   { id: "office",      label: "Office",         icon: Building2, ready: true },
@@ -37,15 +46,15 @@ const NAV = [
   { id: "workflow",    label: "Workflow",       icon: GitBranch, ready: true },
   { id: "activity",    label: "Agent Activity", icon: Activity, ready: true },
   { id: "approvals",   label: "Approvals",      icon: AlertTriangle, ready: true },
-  { id: "projects",    label: "Projects",       icon: FolderKanban },
-  { id: "employees",   label: "AI Employees",   icon: Users },
-  { id: "code",        label: "Code",           icon: Code2 },
-  { id: "testing",     label: "Testing",        icon: FlaskConical },
-  { id: "security",    label: "Security",       icon: ShieldCheck },
-  { id: "deployments", label: "Deployments",    icon: Rocket },
-  { id: "analytics",   label: "Analytics",      icon: TrendingUp },
-  { id: "costs",       label: "Costs",          icon: Wallet },
-  { id: "settings",    label: "Settings",       icon: Settings },
+  { id: "projects",    label: "Projects",       icon: FolderKanban, ready: true },
+  { id: "employees",   label: "AI Employees",   icon: Users, ready: true },
+  { id: "code",        label: "Code",           icon: Code2, ready: true },
+  { id: "testing",     label: "Testing",        icon: FlaskConical, ready: true },
+  { id: "security",    label: "Security",       icon: ShieldCheck, ready: true },
+  { id: "deployments", label: "Deployments",    icon: Rocket, ready: true },
+  { id: "analytics",   label: "Analytics",      icon: TrendingUp, ready: true },
+  { id: "costs",       label: "Costs",          icon: Wallet, ready: true },
+  { id: "settings",    label: "Settings",       icon: Settings, ready: true },
 ];
 
 export default function Shell({ apiUrl = "http://localhost:8000" }) {
@@ -126,6 +135,30 @@ export default function Shell({ apiUrl = "http://localhost:8000" }) {
         return <ActivityScreen feed={feed} onSelectAgent={(id) => { onSelectAgent(id); setRoute("office"); }} />;
       case "approvals":
         return <Approvals approvals={approvals} onResolve={src.resolveApproval} live={live} />;
+      case "projects":
+        return <Projects runs={src.runs} metrics={metrics} live={live} onRoute={setRoute} />;
+      case "employees":
+        return <Employees agents={agents} roster={src.roster}
+          onSelectAgent={(id) => { onSelectAgent(id); setRoute("office"); }} />;
+      case "code":
+        return <CodeScreen feed={feed}
+          onSelectAgent={(id) => { onSelectAgent(id); setRoute("office"); }} />;
+      case "testing":
+        return <TestingScreen feed={feed} metrics={metrics}
+          onSelectAgent={(id) => { onSelectAgent(id); setRoute("office"); }} />;
+      case "security":
+        return <SecurityScreen roster={src.roster} live={live} />;
+      case "deployments":
+        return <DeploymentsScreen metrics={metrics} approvals={approvals} tasks={tasks} onRoute={setRoute} />;
+      case "analytics":
+        return <AnalyticsScreen feed={feed} agents={agents} metrics={metrics} />;
+      case "costs":
+        return <CostsScreen agents={agents} metrics={metrics} health={src.health} live={live}
+          onSelectAgent={(id) => { onSelectAgent(id); setRoute("office"); }} />;
+      case "settings":
+        return <SettingsScreen health={src.health} apiUrl={src.apiUrl ?? apiUrl}
+          connected={wire.connected} live={live} runs={src.runs}
+          onToggleLive={() => setLive((v) => !v)} />;
       case "office":
         return (
           <div className="vo-body">

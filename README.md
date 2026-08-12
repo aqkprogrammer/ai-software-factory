@@ -53,10 +53,12 @@ the screen. You see what the agent *did*, never what it "thought".
 
 ---
 
-## Six screens, one event stream
+## Fifteen screens, one event stream
 
-Every screen below is a projection of the same event log. Nothing has its own
-data source, so no two screens can disagree about what happened.
+Every screen is a projection of the same event log. Nothing has its own data
+source, so no two screens can disagree about what happened — and where the
+system genuinely doesn't do something yet, the screen says so instead of
+showing a plausible number.
 
 ### Command center — where the work stands
 
@@ -104,6 +106,33 @@ way through, not re-simulated.
 The agents plan, write, test and review on their own. They stop here.
 Approving posts back to the API, which emits the decision as an event — so your
 answer shows up in the log like everything else.
+
+### The team, and what they're allowed to do
+
+![AI employees](docs/media/employees.png)
+
+Model, tool count and permissions per desk — read from `GET /agents`, which
+reports the same objects the runtime uses. Four desks are implemented; the
+other eight say `not provisioned` rather than pretending.
+
+### Security is a boundary, not a dashboard
+
+![Security](docs/media/security.png)
+
+No scanner runs in this pipeline, so there are no findings and none are
+invented. What's shown instead is the real boundary — the tool allowlist per
+agent, the workspace path check, the human gate — plus the gaps, named: no
+SAST, no dependency audit, no API auth.
+
+### And the rest
+
+**Projects** reconstructs run history out of the event log (there is no runs
+table). **Code** indexes every file the agents touched, with the event history
+per path. **Testing** lists every suite execution and the first-run pass rate.
+**Analytics** counts the stream by desk, category and event type. **Costs**
+breaks token spend down per desk against the real model rates. **Deployments**
+shows how far a run actually gets and stops at "nothing has ever shipped from
+here". **Settings** reads live config from the backend.
 
 ### ⌘K
 
@@ -290,6 +319,8 @@ frontend/
 | `POST /runs` | Start a build. Returns immediately; one at a time. |
 | `POST /runs/demo` | Scripted run. No key, no model calls, no files written. |
 | `POST /approvals/{id}` | Answer a gate: `{"decision": "approved"}`. |
+| `GET /agents` | Each agent's model and exact tool allowlist. |
+| `GET /runs` | Run history, reconstructed from the event log. |
 | `GET /health` | Provider, model, and whether the key is actually set. |
 | `GET /state` | Snapshot for first paint: agents, tasks, approvals, events. |
 | `WS /stream` | Replays recent events, then streams live. |
@@ -312,9 +343,10 @@ Written down honestly, because a demo that hides its edges isn't worth showing.
 5. **Eight empty desks.** Frontend, database, security, and devops agents are
    roster entries, not implementations.
 
-Nine sidebar screens are still placeholders (Projects, Code, Testing,
-Security, Deployments, Analytics, Costs, Settings, AI Employees) — they say so
-rather than showing fake data.
+Every sidebar screen is built, but several describe capability the pipeline
+doesn't have yet: there is no security scanner, no deploy step, and no diff
+viewer (the API doesn't serve file contents). Those screens name the gap
+instead of filling it with something plausible.
 
 ---
 

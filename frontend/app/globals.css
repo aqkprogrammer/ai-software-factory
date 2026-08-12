@@ -187,6 +187,63 @@ html, body {
 }
 .vo-task:hover { border-color: var(--accent); transform: translateY(-1px); }
 
+/* ------------------------------------------------- tables, tags, grids -- */
+
+.vo-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.vo-table th {
+  text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--faint);
+  font-weight: 400; padding: 0 10px 8px 0; white-space: nowrap;
+}
+.vo-table td { padding: 8px 10px 8px 0; color: var(--dim); border-top: 1px solid var(--border-soft); }
+.vo-table .num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+.vo-table tr[data-on="true"] td { color: var(--ink); background: rgba(99, 102, 241, .08); }
+
+.vo-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px;
+  border-radius: 999px; border: 1px solid var(--border); color: var(--faint);
+  font-size: 10px; white-space: nowrap;
+}
+
+.vo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+
+.vo-emp {
+  padding: 14px; cursor: pointer; text-align: left; color: var(--ink);
+  transition: border-color 160ms, transform 160ms;
+}
+.vo-emp:hover { border-color: var(--accent); transform: translateY(-1px); }
+.vo-emp-avatar {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  background: var(--raise); border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; flex-shrink: 0;
+}
+.vo-emp-stats {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--faint);
+}
+
+.vo-row[data-on="true"] { background: rgba(99, 102, 241, .1); }
+
+.vo-pre {
+  background: #060B16; border: 1px solid var(--border-soft); border-radius: 9px;
+  padding: 12px; font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px; line-height: 1.7; color: var(--dim); overflow-x: auto; margin: 0;
+}
+
+/* ----------------------------------------------------------- pipeline -- */
+
+.vo-pipeline { display: flex; flex-wrap: wrap; gap: 20px 26px; }
+.vo-stage { display: flex; align-items: flex-start; gap: 9px; position: relative; min-width: 140px; }
+.vo-stage-dot {
+  width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center;
+  border: 1px solid; flex-shrink: 0; background: #101827;
+}
+.vo-stage-line {
+  position: absolute; right: -20px; top: 11px; width: 14px; height: 1px;
+  background: var(--border);
+}
+
 /* ------------------------------------------------------------ approvals -- */
 
 .vo-approval { border-color: rgba(234, 179, 8, .35); }

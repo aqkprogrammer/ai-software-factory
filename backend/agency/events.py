@@ -112,6 +112,24 @@ class EventBus:
 
     # -- replay ------------------------------------------------------------
 
+    def runs(self, limit: int = 50) -> list[dict]:
+        """Every run this database has seen. The event log is the history."""
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT run_id, MIN(ts), MAX(ts), COUNT(*),"
+                "       COUNT(DISTINCT agent_id),"
+                "       SUM(CASE WHEN type='test_passed' THEN 1 ELSE 0 END),"
+                "       SUM(CASE WHEN type='test_failed' THEN 1 ELSE 0 END),"
+                "       SUM(CASE WHEN type IN ('file_created','file_modified') THEN 1 ELSE 0 END)"
+                " FROM agent_events GROUP BY run_id ORDER BY MIN(ts) DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [{
+            "runId": r[0], "startedAt": r[1], "endedAt": r[2], "events": r[3],
+            "agents": r[4], "testsPassed": r[5] or 0, "testsFailed": r[6] or 0,
+            "fileWrites": r[7] or 0, "current": r[0] == self.run_id,
+        } for r in rows]
+
     def replay(self, limit: int = 200) -> list[dict]:
         with self._lock:
             rows = self._db.execute(
@@ -153,10 +171,16 @@ TOOL_EVENTS = {
 }
 
 
-def describe_tool(tool: str, args: dict) -> tuple[str, str, str, str]:
+def describe_tool(tool: str, args: dict) -> tuple[str, str, str, str, str]:
+    """-> (event type, feed category, agent status, phrasing, target)
+
+    The target comes back separately as well as inside the phrasing, so the UI
+    can group by file without parsing English out of a message string.
+    """
     type_, cat, status, template = TOOL_EVENTS.get(
         tool, ("tool_called", "agent", "working", "Calling " + tool))
     target = args.get("path") or args.get("pattern") or args.get("command") or ""
     if tool == "run_command" and any(k in target for k in ("pytest", "npm test", "go test", "jest")):
         type_, cat = "test_started", "test"
-    return type_, cat, status, (template.format(target) if "{}" in template else template)
+    message = template.format(target) if "{}" in template else template
+    return type_, cat, status, message, target
