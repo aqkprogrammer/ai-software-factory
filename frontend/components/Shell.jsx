@@ -298,7 +298,9 @@ export default function Shell({ apiUrl = "http://localhost:8000" }) {
           <span style={{ fontSize: 11.5, color: notice ? C.dim : C.faint }}>
             {notice || (wire.connected
               ? "Real agents. They will write files into the workspace directory."
-              : `Backend not reachable at ${apiUrl} — showing simulated data.`)}
+              : !apiUrl
+                ? "Hosted demo — the agents aren't running here. Clone the repo to watch a real build."
+                : `Backend not reachable at ${apiUrl} — showing simulated data.`)}
           </span>
         </div>
 

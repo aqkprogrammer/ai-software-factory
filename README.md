@@ -8,6 +8,10 @@ backend agent reads a file, its monitor lights up. When the tester's suite goes
 red, the desk turns red. When the reviewer approves, you see it happen — with a
 timestamp, in a feed, on the same screen.
 
+**[▶ Open the live demo](https://ai-software-factory-qadir-khan.vercel.app)** — no
+install, no API key. (The hosted build runs the simulation; clone the repo to
+watch real agents write real code.)
+
 ![Tour of the platform](docs/media/tour.gif)
 
 *Every frame above is the running application. There are no mockups in this
@@ -29,6 +33,7 @@ repository.*
 | [Extend it](#extend-it) | Add an agent, a tool, a screen |
 | [Where it breaks](#where-it-breaks) | Honest limits |
 | [Troubleshooting](#troubleshooting) | When it won't start |
+| [Contributing](#contributing) | Open issues, good first ones marked |
 
 ---
 
@@ -566,8 +571,17 @@ polygons.
 
 ---
 
+## Contributing
+
+Issues are open, and the ones labelled
+[`good first issue`](https://github.com/aqkprogrammer/ai-software-factory/labels/good%20first%20issue)
+are real gaps rather than busywork — each one is a limitation named in
+[Where it breaks](#where-it-breaks). Fork it, pick one, open a PR.
+
+---
+
 ## License
 
-Not yet licensed — all rights reserved.
+[MIT](LICENSE) — use it, fork it, build on it.
 
 Built by **Abdul Qadir Khan** · [@aqkprogrammer](https://github.com/aqkprogrammer)

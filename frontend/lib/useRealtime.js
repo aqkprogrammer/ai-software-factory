@@ -148,6 +148,10 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
   useEffect(() => {
     let closed = false;
 
+    // No API configured at all — the hosted demo runs this way. Skip the
+    // socket and the fetches entirely rather than failing once a second.
+    if (!apiUrl) return undefined;
+
     const connect = () => {
       if (closed) return;
       const url = apiUrl.replace(/^http/, "ws") + "/stream";
@@ -194,7 +198,7 @@ export function useRealtime(apiUrl = "http://localhost:8000") {
         run that ends quietly would otherwise leave the bar spinning. Run
         history and config ride along on the same tick.                     */
   useEffect(() => {
-    if (!connected) return undefined;
+    if (!connected || !apiUrl) return undefined;
     const poll = () => {
       fetch(`${apiUrl}/state`).then((r) => r.json())
         .then((s) => setRunning(Boolean(s.running))).catch(() => {});
