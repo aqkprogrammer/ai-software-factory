@@ -21,6 +21,8 @@ import { useRealtime } from "../lib/useRealtime";
 import { useOfficeEngine } from "../lib/mockEngine";
 
 import Floor from "./office/Floor";
+import PixelOffice from "./office/PixelOffice";
+import WorkerBar from "./office/WorkerBar";
 import AgentPanel from "./AgentPanel";
 import ActivityFeed, { FilterChips } from "./ActivityFeed";
 import CommandPalette from "./CommandPalette";
@@ -80,6 +82,10 @@ export default function Shell({ apiUrl = "http://localhost:8000" }) {
   const [selected, setSelected] = useState("backend");
   const [filter, setFilter] = useState("all");
   const [zoom, setZoom] = useState(false);
+  /*  Two ways to look at the same floor: the pixel-art game view and the
+      isometric vector one. Same agents, same events — only the renderer
+      differs, so neither can show something the other can't.              */
+  const [officeView, setOfficeView] = useState("pixel");
   const [requirement, setRequirement] = useState("");
   const [notice, setNotice] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -169,7 +175,7 @@ export default function Shell({ apiUrl = "http://localhost:8000" }) {
                   <div className="vo-eyebrow">Floor plan</div>
                   <div className="vo-h" style={{ fontSize: 16, marginTop: 3 }}>Who is working right now</div>
                 </div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   {["working", "thinking", "waiting", "blocked", "error"].map((k) => (
                     <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5,
                       fontSize: 10.5, color: C.faint }}>
@@ -177,9 +183,25 @@ export default function Shell({ apiUrl = "http://localhost:8000" }) {
                       {STATUS[k].label}
                     </span>
                   ))}
+                  <span className="px-toggle" style={{ marginLeft: 4 }}>
+                    <button data-on={officeView === "pixel"} onClick={() => setOfficeView("pixel")}>
+                      PIXEL
+                    </button>
+                    <button data-on={officeView === "iso"} onClick={() => setOfficeView("iso")}>
+                      ISO
+                    </button>
+                  </span>
                 </div>
               </div>
-              <Floor agents={agents} selected={selected} onSelect={onSelectAgent} zoom={zoom} />
+
+              {officeView === "pixel" ? (
+                <>
+                  <PixelOffice agents={agents} feed={feed} selected={selected} onSelect={onSelectAgent} />
+                  <WorkerBar agents={agents} selected={selected} onSelect={onSelectAgent} />
+                </>
+              ) : (
+                <Floor agents={agents} selected={selected} onSelect={onSelectAgent} zoom={zoom} />
+              )}
             </section>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>

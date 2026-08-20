@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen:wght@400;700&display=swap');
 
 :root {
   color-scheme: dark;
@@ -243,6 +243,62 @@ html, body {
   position: absolute; right: -20px; top: 11px; width: 14px; height: 1px;
   background: var(--border);
 }
+
+/* --------------------------------------------------------- pixel office -- */
+
+.px-stage {
+  background: #2A3A32;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35);
+}
+
+/* The whole point: no smoothing, so scaling keeps hard pixel edges. */
+.px-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 4px;
+}
+
+.px-bar {
+  display: flex; gap: 8px; margin-top: 10px; padding-bottom: 4px;
+  overflow-x: auto; scrollbar-width: thin;
+}
+.px-card {
+  display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  padding: 6px 9px 6px 6px; border-radius: 8px; cursor: pointer;
+  background: rgba(19, 28, 49, .8); border: 1px solid var(--border);
+  color: var(--ink); text-align: left; transition: border-color 160ms, transform 160ms;
+}
+.px-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.px-card[data-on="true"] { border-color: var(--accent); background: rgba(99, 102, 241, .16); }
+
+.px-avatar {
+  width: 34px; height: 34px; image-rendering: pixelated; image-rendering: crisp-edges;
+  border-radius: 4px; flex-shrink: 0;
+}
+.px-card-text { display: flex; flex-direction: column; gap: 1px; min-width: 74px; }
+.px-card-name { font-family: Silkscreen, 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .04em; }
+.px-card-role { font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+.px-card-status {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .06em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.px-dot { width: 6px; height: 6px; border-radius: 6px; display: inline-block; }
+
+.px-toggle { display: inline-flex; gap: 4px; }
+.px-toggle button {
+  font-family: Silkscreen, 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .04em;
+  padding: 5px 9px; border-radius: 7px; cursor: pointer;
+  background: var(--raise); border: 1px solid var(--border); color: var(--faint);
+}
+.px-toggle button[data-on="true"] { color: var(--ink); border-color: var(--accent); background: rgba(99, 102, 241, .16); }
 
 /* ------------------------------------------------------------ approvals -- */
 

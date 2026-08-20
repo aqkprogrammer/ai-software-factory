@@ -178,6 +178,36 @@ boundary — which is why the agent code stays plain, readable Python with no
 
 ## The office, up close
 
+The floor has two renderers. Same agents, same events — only the drawing
+differs, so neither can show something the other can't.
+
+### Pixel view (default)
+
+![The pixel office](docs/media/pixel-office.png)
+
+A 576×352 logical canvas scaled up with `image-rendering: pixelated`, redrawn
+on a deliberate ~6fps beat — the low frame rate is what makes the typing bob
+and the screen flicker read as animation frames instead of easing curves.
+
+There are no images and no sprite sheet. Every worker, desk, monitor, plant and
+letter is `fillRect` calls, including a 3×5 bitmap font defined as bit strings:
+
+```js
+const GLYPHS = { A: "010101111101101", B: "110101110101110", ... };
+```
+
+Look at the desks: **four are staffed and eight say VACANT.** That's the same
+honesty the rest of the product runs on — four agents exist, so four people are
+in the building. A game view is exactly where it would be easiest to fake a
+full office, which is why it doesn't.
+
+Speech bubbles go to the desk you selected, anything that needs a human, and
+whoever moved most recently — three at a time, so the floor looks busy without
+becoming a wall of text. The bubbles say `WORKING`, `TESTS RED`, `BLOCKED`:
+the same fixed vocabulary as everywhere else, never model prose.
+
+### Isometric view
+
 ![The floor plan](docs/media/floor-plan.png)
 
 Hand-built isometric SVG — room plates, desks, monitors, seated staff, a status
@@ -542,6 +572,8 @@ backend/
 frontend/
   components/Shell.jsx           sidebar, top bar, routing, ⌘K
   components/office/Floor.jsx    the isometric floor plan
+  components/office/PixelOffice.jsx  the pixel-art floor, on a canvas
+  lib/pixel.js                   the sprite renderer and its 3x5 font
   components/screens/            the fifteen screens
   lib/useRealtime.js             snapshot, then live, with reconnect and dedupe
   lib/derive.js                  files, tests, analytics and costs from the feed
